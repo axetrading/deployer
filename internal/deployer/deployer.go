@@ -38,6 +38,7 @@ const commandsPath = "/control/commands"
 const outputPath = "/control/output"
 const releasePath = "/control/release"
 const runPath = "/control/run"
+const tfvarsPath = "/control/release/terraform/tfvars.json"
 
 func Main(ctx context.Context, inputs *Inputs) error {
 	deployer := createDeployer(inputs)
@@ -99,8 +100,6 @@ func (d *deployer) run(ctx context.Context) error {
 		}
 	}
 
-	fmt.Println("sending done log data to " + d.nextLogURL)
-
 	d.sendLogData(&linesResult{lines: []string{"done"}}, true)
 
 	return nil
@@ -118,6 +117,7 @@ func (d *deployer) initControlVolume() error {
 		return fmt.Errorf("failed to remove release directory: %v", err)
 	}
 	os.Remove(runPath)
+	os.Remove(tfvarsPath)
 
 	if err := os.Mkdir(commandsPath, 0777); err != nil {
 		return fmt.Errorf("failed to create commands directory: %v", err)
@@ -173,7 +173,7 @@ func (d *deployer) terraformInit() error {
 }
 
 func (d *deployer) writeTFVars() error {
-	tfVarsFile, err := os.Create("/control/release/terraform/tfvars.json")
+	tfVarsFile, err := os.Create(tfvarsPath)
 	if err != nil {
 		return err
 	}
@@ -330,6 +330,12 @@ func (d *deployer) runCommand(name string, command []string) (chan *linesResult,
 }
 
 func (d *deployer) sendLogData(result *linesResult, done bool) error {
+	for _, line := range result.lines {
+		log.Println(line)
+	}
+	if d.nextLogURL == "" {
+		return nil
+	}
 	jsonData := createLinesLogData(result, done)
 	nextBackoff := 100 * time.Millisecond
 	maxBackoff := 5 * time.Second
