@@ -356,7 +356,7 @@ func (d *deployer) sendLogData(result *linesResult, done bool) error {
 		}
 		if resp.StatusCode != 200 {
 			if resp.StatusCode < 500 {
-				log.Fatalln("unexpected client error status code from log endpoint:", resp.StatusCode)
+				log.Fatalf("unexpected client error status code from log endpoint (%s): %d\n", d.nextLogURL, resp.StatusCode)
 			}
 			log.Println("server error from log endpoint:", resp.StatusCode)
 			backoff()
