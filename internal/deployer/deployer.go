@@ -310,23 +310,32 @@ func (d *deployer) runCommand(name string, command []string) (chan *linesResult,
 		}
 		statusFilename := "/control/output/" + name + ".status"
 		waitForFileToExist(statusFilename)
-		statusBytes, err := os.ReadFile(statusFilename)
+		status, err := readStatus(statusFilename)
 		if err != nil {
 			resultChan <- &linesResult{err: err}
 			return
 		}
-		statusInt, err := strconv.ParseUint(string(statusBytes), 10, 8)
-		if err != nil {
-			resultChan <- &linesResult{err: fmt.Errorf("failed to parse status: %w", err)}
+		if status != 0 {
+			resultChan <- &linesResult{err: fmt.Errorf("non-zero status: %d", status)}
 			return
 		}
-		if statusInt != 0 {
-			resultChan <- &linesResult{err: fmt.Errorf("non-zero status: %d", statusInt)}
-			return
-		}
-
 	}()
 	return resultChan, nil
+}
+
+func readStatus(statusFilename string) (uint64, error) {
+	for {
+		statusBytes, err := os.ReadFile(statusFilename)
+		if err != nil {
+			return 0, err
+		}
+		if len(statusBytes) == 0 {
+			log.Println("waiting for status...")
+			time.Sleep(1 * time.Second)
+		} else {
+			return strconv.ParseUint(string(statusBytes), 10, 8)
+		}
+	}
 }
 
 func (d *deployer) sendLogData(result *linesResult, done bool) error {
