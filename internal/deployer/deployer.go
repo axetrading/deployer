@@ -21,12 +21,14 @@ import (
 	"github.com/aws/smithy-go"
 )
 
+// deployer struct represents the deployer object
 type deployer struct {
 	inputs     *Inputs
 	s3Client   *s3.Client
 	nextLogURL string
 }
 
+// createDeployer creates a new deployer object
 func createDeployer(inputs *Inputs) *deployer {
 	return &deployer{
 		inputs:     inputs,
@@ -34,12 +36,16 @@ func createDeployer(inputs *Inputs) *deployer {
 	}
 }
 
-const commandsPath = "/control/commands"
-const outputPath = "/control/output"
-const releasePath = "/control/release"
-const runPath = "/control/run"
-const tfvarsPath = "/control/release/terraform/tfvars.json"
+// Constants for file paths
+const (
+	commandsPath = "/control/commands"
+	outputPath   = "/control/output"
+	releasePath  = "/control/release"
+	runPath      = "/control/run"
+	tfvarsPath   = "/control/release/terraform/tfvars.json"
+)
 
+// Main is the entry point of the deployer
 func Main(ctx context.Context, inputs *Inputs) error {
 	deployer := createDeployer(inputs)
 	if deployer.s3Client == nil {
@@ -52,6 +58,7 @@ func Main(ctx context.Context, inputs *Inputs) error {
 	return deployer.run(ctx)
 }
 
+// run executes the deployment process
 func (d *deployer) run(ctx context.Context) error {
 	if err := d.initControlVolume(); err != nil {
 		return err
@@ -105,6 +112,7 @@ func (d *deployer) run(ctx context.Context) error {
 	return nil
 }
 
+// initControlVolume initializes the control volume
 func (d *deployer) initControlVolume() error {
 	// volume should be empty, but useful when testing locally
 	if err := os.RemoveAll(commandsPath); err != nil {
@@ -139,6 +147,7 @@ func (d *deployer) initControlVolume() error {
 	return nil
 }
 
+// terraformInit initializes Terraform
 func (d *deployer) terraformInit() error {
 	stateExists, location, err := d.stateExists()
 	if err != nil {
@@ -172,6 +181,7 @@ func (d *deployer) terraformInit() error {
 	return nil
 }
 
+// writeTFVars writes the TFVars file
 func (d *deployer) writeTFVars() error {
 	tfVarsFile, err := os.Create(tfvarsPath)
 	if err != nil {
@@ -188,6 +198,7 @@ func (d *deployer) writeTFVars() error {
 	return nil
 }
 
+// stateExists checks if the Terraform state exists
 func (d *deployer) stateExists() (bool, string, error) {
 	key := d.inputs.ServiceName + "/" + d.inputs.Workspace + "/terraform.tfstate"
 	path := "s3://" + d.inputs.TFStateBucket + "/" + key
@@ -204,10 +215,7 @@ func (d *deployer) stateExists() (bool, string, error) {
 	return true, path, nil
 }
 
-//func apply(ctx context.Context, inputs *Inputs) error {
-//
-//}
-
+// downloadTerraformRelease downloads the Terraform release from S3
 func (d *deployer) downloadTerraformRelease(ctx context.Context) error {
 	sdkConfig, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
@@ -238,6 +246,7 @@ func (d *deployer) downloadTerraformRelease(ctx context.Context) error {
 	return nil
 }
 
+// streamCommand runs a command and streams the output
 func (d *deployer) streamCommand(name string, command []string, shell bool) error {
 	log.Println("running command:\n\n", "    "+strings.Join(command, " ")+"\n")
 	if shell {
@@ -255,6 +264,7 @@ func (d *deployer) streamCommand(name string, command []string, shell bool) erro
 	return nil
 }
 
+// runCommandSimple runs a command and returns the output
 func (d *deployer) runCommandSimple(name string, command []string) (string, int16, error) {
 	resultChan, err := d.runCommand(name, command)
 	if err != nil {
@@ -275,6 +285,7 @@ func (d *deployer) runCommandSimple(name string, command []string) (string, int1
 	return output, 0, nil
 }
 
+// runCommand runs a command and returns a channel to stream the output
 func (d *deployer) runCommand(name string, command []string) (chan *linesResult, error) {
 	socket, err := net.Listen("unix", "/control/output/"+name)
 	if err != nil {
@@ -323,6 +334,7 @@ func (d *deployer) runCommand(name string, command []string) (chan *linesResult,
 	return resultChan, nil
 }
 
+// readStatus reads the status from a file
 func readStatus(statusFilename string) (uint64, error) {
 	for {
 		statusBytes, err := os.ReadFile(statusFilename)
@@ -338,6 +350,7 @@ func readStatus(statusFilename string) (uint64, error) {
 	}
 }
 
+// sendLogData sends log data to the specified URL
 func (d *deployer) sendLogData(result *linesResult, done bool) error {
 	for _, line := range result.lines {
 		log.Println(line)
@@ -387,6 +400,7 @@ func (d *deployer) sendLogData(result *linesResult, done bool) error {
 	}
 }
 
+// done marks the deployment as done
 func (d *deployer) done() error {
 	file, err := os.Create("/control/done")
 	if err != nil {

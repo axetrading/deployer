@@ -12,16 +12,17 @@ import (
 	"time"
 )
 
+// linesResult represents the result of streaming line groups.
 type linesResult struct {
 	lines []string
 	err   error
 }
 
+// streamLineGroups reads from the reader and streams line groups through a channel.
 func streamLineGroups(reader io.ReadCloser) chan *linesResult {
 	result := make(chan *linesResult)
 	go func() {
 		defer close(result)
-		//defer reader.Close()
 		remainder := []byte{}
 		for {
 			buf := make([]byte, 5*1024)
@@ -58,6 +59,7 @@ func streamLineGroups(reader io.ReadCloser) chan *linesResult {
 	return result
 }
 
+// unzip extracts the contents of the archive to the destination directory.
 func unzip(archivePath, destDir string) error {
 	archive, err := zip.OpenReader(archivePath)
 	if err != nil {
@@ -91,6 +93,7 @@ func unzip(archivePath, destDir string) error {
 	return nil
 }
 
+// copy copies a file from source to destination.
 func copy(src, dest string) error {
 	srcFile, err := os.Open(src)
 	if err != nil {
@@ -111,6 +114,7 @@ func copy(src, dest string) error {
 	return nil
 }
 
+// makeExecutable makes a file executable.
 func makeExecutable(filename string) error {
 	info, err := os.Stat(filename)
 	if err != nil {
@@ -119,6 +123,7 @@ func makeExecutable(filename string) error {
 	return os.Chmod(filename, info.Mode()|0111)
 }
 
+// waitForFileToExist waits for a file to exist.
 func waitForFileToExist(filename string) error {
 	for {
 		if _, err := os.Stat(filename); os.IsNotExist(err) {
@@ -131,6 +136,7 @@ func waitForFileToExist(filename string) error {
 	}
 }
 
+// createLinesLogData creates log data from the lines result.
 func createLinesLogData(result *linesResult, done bool) []byte {
 	var errorMessage *string = nil
 	if result.err != nil {
@@ -149,12 +155,14 @@ func createLinesLogData(result *linesResult, done bool) []byte {
 	return jsonData
 }
 
+// logData represents the log data structure.
 type logData struct {
 	Lines []string `json:"lines"`
 	Done  bool     `json:"done"`
 	Error *string  `json:"error"`
 }
 
+// logResposne represents the log response structure.
 type logResposne struct {
 	ContinueURL string `json:"continue"`
 }
