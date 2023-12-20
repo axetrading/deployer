@@ -257,7 +257,16 @@ func (d *deployer) streamCommand(name string, command []string, shell bool) erro
 		return err
 	}
 	for linesResult := range resultChan {
+		// Debugging: Check if nextLogURL is set
+		if d.nextLogURL == "" {
+			log.Println("No log URL set for sendLogData")
+		} else {
+			log.Printf("sendLogData will send logs to URL: %s\n", d.nextLogURL)
+		}
+
+		// Attempt to send log data
 		if err := d.sendLogData(linesResult, false); err != nil {
+			log.Printf("Error in sendLogData: %v\n", err)
 			return err
 		}
 	}
