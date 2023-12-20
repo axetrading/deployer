@@ -43,12 +43,14 @@ func main() {
 			conn, err := net.Dial("unix", "/control/output/"+name)
 			if err != nil {
 				log.Fatalln("Failed to dial", err)
+			} else {
+				log.Printf("Connected to %s\n", "/control/output/"+name)
 			}
+			defer conn.Close()
+
 			cmd.Stdout = conn
 			cmd.Stderr = conn
-			if err != nil {
-				log.Fatalln("Failed to get stdout pipe", err)
-			}
+
 			status := uint8(0)
 			if err := cmd.Start(); err != nil {
 				log.Fatalf("Failed to start command: %v\n", err)
@@ -60,7 +62,6 @@ func main() {
 					log.Fatalf("Failed to wait for command: %v\n", err)
 				}
 			}
-			conn.Close()
 			if err := os.WriteFile("/control/output/"+name+".status", []byte(fmt.Sprintf("%d", status)), 0777); err != nil {
 				log.Fatalln("Failed to write status", err)
 			}
