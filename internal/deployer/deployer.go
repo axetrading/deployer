@@ -352,10 +352,12 @@ func readStatus(statusFilename string) (uint64, error) {
 
 // sendLogData sends log data to the specified URL
 func (d *deployer) sendLogData(result *linesResult, done bool) error {
+	log.Println("sending log data...")
 	for _, line := range result.lines {
 		log.Println(line)
 	}
 	if d.nextLogURL == "" {
+		log.Println("no log URL, not sending log data")
 		return nil
 	}
 	jsonData := createLinesLogData(result, done)
